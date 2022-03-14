@@ -66,7 +66,7 @@ int main(void)
 			for (unsigned int k = j + 1; k < num; k++)
 			{
 				double dr = distance(particles[j], particles[k]);
-				//dr -= ceil(dr / L) * L;
+				//dr -= ceil(dr / L) * L;							// Creates problems for computation
 
 				{
 				if (dr < 3)
