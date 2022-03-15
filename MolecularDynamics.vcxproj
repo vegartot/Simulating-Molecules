@@ -144,6 +144,9 @@
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">EnableAllWarnings</WarningLevel>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="dataReader.py" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
