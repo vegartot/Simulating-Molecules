@@ -31,16 +31,14 @@ int main(void)
 	unsigned int n_ = 2;
 	const double L = n_ * 1.7f;
 	double*** particles = initializeCube(n_, L);
-	//particles[0][1][0] = 20.f;
-
-	unsigned const int num = 4 * (int)pow(n_, 3);
+	const unsigned int num = 4 * (int)pow(n_, 3);
 
 	initializeVelocities(particles, num, 0, sqrt(300));
 
 	
 	FILE* dataFile = fopen("outputdata.txt", "w");				// Ovito-file
 	FILE* potFile = fopen("outputdata_pot.txt", "w");			// Potential energy
-	FILE* velFile = fopen("outputdata_vel.txt", "w");			// Velocities squared
+	FILE* velFile = fopen("outputdata_vel.txt", "w");			// Velocities 
 	fprintf(potFile, "%lf %d\n", endTime, timesteps);
 
 
@@ -91,9 +89,9 @@ int main(void)
 				{
 					for (int n = 0; n < 3; n++)
 					{
-							double acc_new = 24. * (2. * pow(distsq, -6) - pow(distsq, -3)) * dr[n] / distsq;
-							accumulated[j][n] += acc_new;
-							accumulated[k][n] -= acc_new;
+						double acc_new = 24. * (2. * pow(distsq, -6) - pow(distsq, -3)) * dr[n] / distsq;
+						accumulated[j][n] += acc_new;
+						accumulated[k][n] -= acc_new;
 					}
 				}
 			}
@@ -106,9 +104,14 @@ int main(void)
 			}
 		}
 
-		// De-allocate allocated memory:
-		accumulated = NULL;
+		// Free allocated memory:
+		for (unsigned int j = 0; j < num; j++)
+		{
+			free(accumulated[j]);
+			accumulated[j] = NULL;
+		}
 		free(accumulated);
+		accumulated = NULL;
 	}
 
 	writeToDataFile(&dataFile, particles, num);
