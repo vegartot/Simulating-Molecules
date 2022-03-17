@@ -17,7 +17,7 @@ def getVel():
         velocities.append(vel)
         velocities = np.array(velocities)
         t = np.linspace(0, endTime, timepoints)
-        return t, velocities
+        return t, velocities, N
         
 def getPot():
     with open("outputdata_pot.txt", 'r') as infile:
@@ -29,11 +29,20 @@ def getPot():
             U[i] = float(line)
         return t, U
 
-t1, vel = getVel()
+t1, vel, N = getVel()
 t2, U = getPot()
 
-plt.plot(t1, vel + U)
-plt.show()
+plt.plot(t2, U + 0.5*vel)
+#plt.show()
+
+plt.plot(t1, 0.5*vel)
+#plt.show()
 
 plt.plot(t2, U)
+
+plt.title("Potential- // Kinetic Energy")
+plt.show()
+
+plt.plot(t1, 1/(3*N) * vel)
+plt.title("Temperature")
 plt.show()
