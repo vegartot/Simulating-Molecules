@@ -28,15 +28,15 @@ void initializeVelocities(double*** p, const int N, const double mean, const dou
 int main(void)
 {
 	unsigned int timesteps = 5000;
-	const double endTime = 5;
+	const double endTime = 10;
 	double* t = linspace(0, endTime, timesteps);
 	
 	
-	unsigned int n_ = 4;
+	unsigned int n_ = 2;
 	const double L = n_ * 1.7;
 	double*** particles = initializeCube(n_, L);
 	const unsigned int num = 4 * (int)pow(n_, 3);
-	initializeVelocities(particles, num, 0, sqrt(300 / 119.7));
+	initializeVelocities(particles, num, 0, sqrt(12150 / 119.7));
 	
 	
 	/*

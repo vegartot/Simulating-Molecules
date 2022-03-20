@@ -3,10 +3,10 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <time.h>
-#include <omp.h>						// Potential implimentation of multi-threading
 
 #pragma warning(disable: 5045)			// Warning about Spectre mitigations
 #pragma warning(disable: 4996)			// Warning about unsafe fopen function
+#pragma warning(disable: 4100)			// Warning about unreferenced parameter (argv)
 
 
 double** createParticle(void);
@@ -18,33 +18,35 @@ void writeToVelFile(FILE** infile, double*** p, unsigned const int N, const doub
 void writeToPotFile(FILE** infile, double*** p, unsigned const int N, const double L);
 double normalDist(double mean, double stdDeviation);
 void initializeVelocities(double*** p, const int N, const double mean, const double deviation);
+void initializePreviousInstance(double*** p, const unsigned int N);
 
 
 
-int main(void)
+int main(int argc, char* argv)
 {
-	unsigned int timesteps = 2000;
-	const double endTime = 1;
+	unsigned int timesteps = 3000;
+	const double endTime = 3;
 	double* t = linspace(0, endTime, timesteps);
-	
 
-	unsigned int n_ = 5;
+
+	unsigned int n_ = 3;
 	const double L = n_ * 1.7;
-	double*** particles = initializeCube(n_, L);
+	double*** particles;
 	const unsigned int num = 4 * (int)pow(n_, 3);
-	initializeVelocities(particles, num, 0, sqrt(12150 / 119.7));
 
-	/*
-	const unsigned int num = 2;
-	const double L = 2 * 1.7;
-	double*** particles = (double***)calloc(num, sizeof(double**));
-	particles[0] = createParticle();
-	particles[0][2][0] = 1.5;
-	particles[0][1][1] = 2;
-	particles[1] = createParticle();
-	//initializeVelocities(particles, num, 0, sqrt(300 / 119.7));
-	*/
-
+	// Pass some random Command-line argument to initialize particles with last data from previous simulation
+	if (argc > 1)
+	{
+		particles = initializeParticles(num);
+		initializePreviousInstance(particles, num);
+		printf("Initialized previous instance.\n");
+	}
+	else
+	{
+		particles = initializeCube(n_, L);
+		initializeVelocities(particles, num, 0, sqrt(5000 / 119.7));
+	}
+	
 	FILE* dataFile = fopen("outputdata.txt", "w");				// Ovito-file
 	FILE* potFile = fopen("outputdata_pot.txt", "w");			// Potential energy
 	FILE* velFile = fopen("outputdata_vel.txt", "w");			// Velocities 
@@ -80,6 +82,7 @@ int main(void)
 			*(accumulated + j) = (double*)calloc(3, sizeof(double));
 			if (*(accumulated + j) == NULL) goto ErrorHandling;
 		}
+
 		for (unsigned int j = 0; j < num; j++)
 		{
 			// Accumulate accelleration:
@@ -87,7 +90,8 @@ int main(void)
 			{
 				double dr[3] = { 0. };
 				double distsq = 0.;
-				for (unsigned int n = 0; n < 3; n++)
+				
+				for (int n = 0; n < 3; n++)
 				{
 					double distn = particles[j][2][n] - particles[k][2][n];
 					distn -= round(distn / L) * L;
@@ -99,14 +103,17 @@ int main(void)
 				{
 					for (int n = 0; n < 3; n++)
 					{
-						double acc_new = 24. * (2. * pow(distsq, -6) - pow(distsq, -3)) * dr[n] / distsq;
+						double acc_new = 24. * (2. * pow(distsq, -6) - pow(distsq, -3)) * dr[n] /distsq;
 						accumulated[j][n] += acc_new;
 						accumulated[k][n] -= acc_new;
 					}
 				}
 			}
-			
-			// Update accelleration + velocity:
+		}
+
+		// Update accelleration + velocity:
+		for (unsigned int j = 0; j < num; j++)
+		{
 			for (int n = 0; n < 3; n++)
 			{
 				particles[j][1][n] += 0.5f * (particles[j][0][n] + accumulated[j][n]) * dt;
@@ -131,9 +138,26 @@ int main(void)
 	fclose(dataFile);
 	fclose(velFile);
 	fclose(potFile);
+ 
+
+	FILE* lastPos = fopen("outputdata_lastPos.txt", "w");
+	FILE* lastVel = fopen("outputdata_lastVel.txt", "w");
+
+	fprintf(lastPos, "%u\n", num);
+	//fprintf(lastVel, "%u\n", num);
+
+	for (unsigned int i = 0; i < num; i++)
+	{
+		fprintf(lastPos, "%lf %lf %lf\n", particles[i][2][0], particles[i][2][1], particles[i][2][2]);
+		fprintf(lastVel, "%lf %lf %lf\n", particles[i][1][0], particles[i][1][1], particles[i][1][2]);
+	}
+
+
+	fclose(lastPos);
+	fclose(lastVel);
 	free(t);
 	free(particles);
- 
+
 
 	return 0;
 
@@ -280,4 +304,49 @@ void initializeVelocities(double*** p, const int N, const double mean, const dou
 			p[i][1][j] = normalDist(mean, deviation);
 		}
 	}
+}
+
+void initializePreviousInstance(double*** p, const unsigned int N)
+{
+# pragma warning(disable: 6031)
+
+	FILE* dataFile = fopen("outputdata_lastPos.txt", "r");
+	FILE* velFile = fopen("outputdata_lastVel.txt", "r");
+	if (dataFile == NULL || velFile == NULL)
+	{
+		printf("Opening datafiles returned NULL pointer, run a simulation first.\n");
+		exit(1);
+	}
+	char buffer[128];
+	if (fgets(buffer, 128, dataFile) == NULL)
+	{
+		printf("Failed to read header from dataFile.\n");
+		exit(1);
+	}
+	unsigned int prevNum;
+	sscanf(buffer, "%u", &prevNum);
+	if (prevNum != N)
+	{
+		printf("Atoms from previous simulation does not match current simulation.\nPrev: %u\nCurr: %u\n", prevNum, N);
+		exit(1);
+	}
+	for (unsigned int i = 0; i < prevNum; i++)
+	{
+		if (fgets(buffer, 128, dataFile) == NULL)
+		{
+			printf("Failed to read header from dataFile.\n");
+			exit(1);
+		}
+		sscanf(buffer, "%lf %lf %lf", &p[i][2][0], &p[i][2][1], &p[i][2][2]);
+
+		if (fgets(buffer, 128, velFile) == NULL)
+		{
+			printf("Failed to read header from dataFile.\n");
+			exit(1);
+		}
+		sscanf(buffer, "%lf %lf %lf", &p[i][1][0], &p[i][1][1], &p[i][1][2]);
+	}
+
+	fclose(dataFile);
+	fclose(velFile);
 }
