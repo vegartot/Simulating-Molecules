@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+
 #define _USE_MATH_DEFINES
 #include <math.h>
-#include <time.h>
 
 #pragma warning(disable: 5045)			// Warning about Spectre mitigations
 #pragma warning(disable: 4996)			// Warning about unsafe fopen function
@@ -29,10 +30,11 @@ int main(int argc, char* argv)
 	double* t = linspace(0, endTime, timesteps);
 
 
-	unsigned int n_ = 3;
-	const double L = n_ * 1.7;
-	double*** particles;
-	const unsigned int num = 4 * (int)pow(n_, 3);
+	unsigned int n_ = 3;								// Unit-cells along each axis
+	const double L = n_ * 1.7;							// Size of cube
+	
+	double*** particles;								// Declaration of particle-array
+	const unsigned int num = 4 * (int)pow(n_, 3);		// Total number of particles
 
 	// Pass some random Command-line argument to initialize particles with last data from previous simulation
 	if (argc > 1)
@@ -75,6 +77,7 @@ int main(int argc, char* argv)
 			}
 		}
 		
+		// Allocate arrays to accumulate forces for each axis:
 		double** accumulated = (double**)calloc(num, sizeof(double*));
 		if (accumulated == NULL) goto ErrorHandling;
 		for (unsigned int j = 0; j < num; j++)
@@ -143,9 +146,9 @@ int main(int argc, char* argv)
 	FILE* lastPos = fopen("outputdata_lastPos.txt", "w");
 	FILE* lastVel = fopen("outputdata_lastVel.txt", "w");
 
-	fprintf(lastPos, "%u\n", num);
-	//fprintf(lastVel, "%u\n", num);
+	fprintf(lastPos, "%u\n", num);						// Provide number of atoms to data file
 
+	// Write last position and velocity to files:
 	for (unsigned int i = 0; i < num; i++)
 	{
 		fprintf(lastPos, "%lf %lf %lf\n", particles[i][2][0], particles[i][2][1], particles[i][2][2]);
@@ -308,7 +311,7 @@ void initializeVelocities(double*** p, const int N, const double mean, const dou
 
 void initializePreviousInstance(double*** p, const unsigned int N)
 {
-# pragma warning(disable: 6031)
+# pragma warning(disable: 6031)			// Warning about sscanf return value ignored
 
 	FILE* dataFile = fopen("outputdata_lastPos.txt", "r");
 	FILE* velFile = fopen("outputdata_lastVel.txt", "r");
