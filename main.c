@@ -20,6 +20,7 @@ void writeToPotFile(FILE** infile, double*** p, unsigned const int N, const doub
 double normalDist(double mean, double stdDeviation);
 void initializeVelocities(double*** p, const int N, const double mean, const double deviation);
 void initializePreviousInstance(double*** p, const unsigned int N);
+void rdf(double distsq, double binsize, int* bin, int maxBinIndex);
 
 
 
@@ -30,11 +31,15 @@ int main(int argc, char* argv)
 	double* t = linspace(0, endTime, timesteps);
 
 
-	unsigned int n_ = 3;								// Unit-cells along each axis
+	unsigned int n_ = 6;								// Unit-cells along each axis
 	const double L = n_ * 1.7;							// Size of cube
 	
 	double*** particles;								// Declaration of particle-array
 	const unsigned int num = 4 * (int)pow(n_, 3);		// Total number of particles
+
+	double binSize = 0.005;
+	static int maxBinIndex = 1000;
+	int bin[1000] = { 0 };
 
 	// Pass some random Command-line argument to initialize particles with last data from previous simulation
 	if (argc > 1)
@@ -46,7 +51,7 @@ int main(int argc, char* argv)
 	else
 	{
 		particles = initializeCube(n_, L);
-		initializeVelocities(particles, num, 0, sqrt(5000 / 119.7));
+		initializeVelocities(particles, num, 0, sqrt(112));
 	}
 	
 	FILE* dataFile = fopen("outputdata.txt", "w");				// Ovito-file
@@ -102,6 +107,9 @@ int main(int argc, char* argv)
 					dr[n] = distn;
 				}
 
+				if (i == timesteps - 2) rdf(distsq, binSize, bin, maxBinIndex);
+
+
 				if (distsq < 9.)
 				{
 					for (int n = 0; n < 3; n++)
@@ -143,6 +151,7 @@ int main(int argc, char* argv)
 	fclose(potFile);
  
 
+
 	FILE* lastPos = fopen("outputdata_lastPos.txt", "w");
 	FILE* lastVel = fopen("outputdata_lastVel.txt", "w");
 
@@ -154,6 +163,14 @@ int main(int argc, char* argv)
 		fprintf(lastPos, "%lf %lf %lf\n", particles[i][2][0], particles[i][2][1], particles[i][2][2]);
 		fprintf(lastVel, "%lf %lf %lf\n", particles[i][1][0], particles[i][1][1], particles[i][1][2]);
 	}
+
+	// Write normalized bin values from last iteration in main to file:
+	FILE* rdfFile = fopen("outputdata_rdf.txt", "w");
+	for (int i = 0; i < maxBinIndex; i++)
+	{
+		double normalized = pow(L, 3) / pow(num, 2) * bin[i] / (4 * M_PI * pow(0.5 * binSize + i * binSize, 2) * binSize);
+		fprintf(rdfFile, "%lf\n", normalized);
+	}	
 
 
 	fclose(lastPos);
@@ -278,8 +295,8 @@ void writeToPotFile(FILE** infile, double*** p, unsigned const int N, const doub
 			for (int n = 0; n < 3; n++)
 			{
 				double dn = p[j][2][n] - p[k][2][n];
-				dn = pow(dn - round(dn / L) * L, 2);
-				drSq += dn;
+				dn -= round(dn / L) * L;
+				drSq += pow(dn, 2);
 			}
 			U_tot += 4 * (pow(drSq, -6) - pow(drSq, -3));
 		}
@@ -352,4 +369,11 @@ void initializePreviousInstance(double*** p, const unsigned int N)
 
 	fclose(dataFile);
 	fclose(velFile);
+}
+
+void rdf(double distsq, double binSize, int* bin, int maxBinIndex)
+{
+	double dist = sqrt(distsq);
+	int binIndex = floor(dist / binSize);
+	if (binIndex < maxBinIndex) bin[binIndex] ++;
 }

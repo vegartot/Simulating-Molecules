@@ -37,31 +37,31 @@ def getKinetic(velocities, N, timepoints):
     
     return 0.5 * kinetic
 
-def getCorr(velocities, N, timepoints):
-    correlation = np.zeros(timepoints)
-    v0 = [np.linalg.norm(velocities[i][0]) for i in range(N)]
-    for i in range(timepoints):
-        for j, p in enumerate(velocities):
-            vi = np.linalg.norm(p[i])
-            vj0 = v0[j]
-            correlation[i] += np.dot(vi, vj0) / vj0**2
-    return 1/N * correlation
-
 t, vel, N, endTime, timepoints = getVel()
+"""
 t, U = getPot()
 Ek = getKinetic(vel, N, timepoints)
-C = getCorr(vel, N, timepoints)
 
 plt.plot(t, U, label="Potential")
 plt.plot(t, Ek, label="Kinetic")
 plt.plot(t, U+Ek, label="Total")
+plt.title("Particles N = %d" %N)
+plt.xlabel("Time"); plt.ylabel("Energy")
 plt.legend()
 plt.show()
 
-plt.plot(t, C)
-plt.title("Velocity Correlation")
+plt.plot(t, 2/(3 * N) * Ek)
+plt.ylabel("Temperature"); plt.xlabel("Time")
+plt.title("Particles N = %d" %N)
 plt.show()
-
-plt.plot(t, 2/N * Ek)
-plt.title("Temperature")
-plt.show()
+"""
+with open("outputdata_rdf.txt", "r") as infile:
+    foo = []
+    for line in infile:
+        foo.append(float(line))
+    foo = np.array(foo) * 2
+    time = np.linspace(0, foo.size - 1, foo.size)
+    plt.plot(time, foo)
+    plt.xlabel("Bin-Index"); plt.ylabel("Pair-distribution")
+    plt.title("Radial distribution N = %d particles" %N)
+    plt.show()
